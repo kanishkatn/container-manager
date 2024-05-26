@@ -11,7 +11,7 @@ import (
 func main() {
 	jrpcHandler := rpc.NewServer()
 	jrpcHandler.RegisterCodec(json.NewCodec(), "application/json")
-	err := jrpcHandler.RegisterService(new(handler.JobService), "")
+	err := jrpcHandler.RegisterService(new(handler.ContainerService), "")
 	if err != nil {
 		logrus.Fatalf("Failed to register service: %v", err)
 	}
