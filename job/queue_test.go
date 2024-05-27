@@ -1,7 +1,7 @@
-package handler_test
+package job_test
 
 import (
-	"container-manager/handler"
+	"container-manager/job"
 	"container-manager/types"
 	"fmt"
 	"sync"
@@ -17,7 +17,7 @@ func TestJobQueueImpl(t *testing.T) {
 	workerCount := 3
 
 	// Create a new job queue
-	jobQueue := handler.NewJobQueue(queueSize)
+	jobQueue := job.NewQueue(queueSize)
 
 	// Enqueue some jobs
 	jobCount := 5
@@ -41,7 +41,7 @@ func TestJobQueueImpl(t *testing.T) {
 		jobID := fmt.Sprintf("job-%d", i)
 		status, exists := jobQueue.GetStatus(jobID)
 		assert.True(t, exists)
-		assert.Equal(t, string(types.JobStatusComplete), status)
+		assert.Equal(t, types.JobStatusComplete, status)
 	}
 }
 
@@ -50,7 +50,7 @@ func TestJobQueueImplConcurrentEnqueue(t *testing.T) {
 	workerCount := 5
 
 	// Create a new job queue
-	jobQueue := handler.NewJobQueue(queueSize)
+	jobQueue := job.NewQueue(queueSize)
 
 	// Enqueue jobs concurrently
 	jobCount := 50
@@ -82,6 +82,6 @@ func TestJobQueueImplConcurrentEnqueue(t *testing.T) {
 		jobID := fmt.Sprintf("job-%d", i)
 		status, exists := jobQueue.GetStatus(jobID)
 		assert.True(t, exists)
-		assert.Equal(t, string(types.JobStatusComplete), status)
+		assert.Equal(t, types.JobStatusComplete, status)
 	}
 }

@@ -1,4 +1,4 @@
-package handler
+package job
 
 import (
 	"container-manager/types"
@@ -13,91 +13,91 @@ type job struct {
 	container types.Container
 }
 
-// JobQueue is the interface that represents a job queue.
+// Queue is the interface that represents a job queue.
 // Enqueue: Enqueues a job to be run
 // GetStatus: Gets the status of a job
 // Run: Runs the job queue
 // Stop: Stops the job queue
-type JobQueue interface {
+type Queue interface {
 	Enqueue(jobID string, container types.Container) error
 	GetStatus(jobID string) (string, bool)
 	Run(workerCount int)
 	Stop()
 }
 
-// JobQueueImpl is the object that represents a job queue.
-// jobQueue: The queue of jobs to be run
+// QueueHandler is the implementation of the job queue interface.
+// jobs: The queue of jobs to be run
 // jobStatus: The status of each job
 // mutex: The mutex to protect the job status
 // wg: The wait group to wait for all workers to finish
 // quit: The channel to signal workers to quit
-type JobQueueImpl struct {
-	jobQueue  chan job
+type QueueHandler struct {
+	jobs      chan job
 	jobStatus map[string]types.JobStatus
 	mutex     sync.Mutex
 	wg        sync.WaitGroup
 	quit      chan bool
 }
 
-// NewJobQueue creates a new job queue.
-func NewJobQueue(size int) *JobQueueImpl {
-	return &JobQueueImpl{
-		jobQueue:  make(chan job, size),
+// NewQueue creates a new job queue.
+func NewQueue(size int) *QueueHandler {
+	return &QueueHandler{
+		jobs:      make(chan job, size),
 		jobStatus: make(map[string]types.JobStatus),
 		quit:      make(chan bool),
 	}
 }
 
 // Enqueue enqueues a job to be run.
-func (jm *JobQueueImpl) Enqueue(jobID string, container types.Container) error {
-	jm.mutex.Lock()
-	defer jm.mutex.Unlock()
+func (q *QueueHandler) Enqueue(jobID string, container types.Container) error {
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
 
 	jobToQueue := job{
 		ID:        jobID,
 		container: container,
 	}
-	jm.jobQueue <- jobToQueue
-	jm.jobStatus[jobToQueue.ID] = types.JobStatusPending
+	q.jobs <- jobToQueue
+	q.jobStatus[jobToQueue.ID] = types.JobStatusPending
 	return nil
 }
 
 // GetStatus gets the status of a job.
-func (jm *JobQueueImpl) GetStatus(jobID string) (types.JobStatus, bool) {
-	jm.mutex.Lock()
-	defer jm.mutex.Unlock()
+func (q *QueueHandler) GetStatus(jobID string) (types.JobStatus, bool) {
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
 
-	status, exists := jm.jobStatus[jobID]
+	status, exists := q.jobStatus[jobID]
 	return status, exists
 }
 
 // worker runs the jobs in the job queue.
-func (jm *JobQueueImpl) worker() {
-	defer jm.wg.Done()
+func (q *QueueHandler) worker() {
+	defer q.wg.Done()
 
 	for {
 		select {
-		case job := <-jm.jobQueue:
+		case job := <-q.jobs:
 			// TODO: Run the job
-			jm.mutex.Lock()
-			jm.jobStatus[job.ID] = types.JobStatusComplete
-			jm.mutex.Unlock()
-		case <-jm.quit:
+			q.mutex.Lock()
+			q.jobStatus[job.ID] = types.JobStatusComplete
+			q.mutex.Unlock()
+		case <-q.quit:
 			return
 		}
 	}
 }
 
 // Run runs the job queue.
-func (jm *JobQueueImpl) Run(workerCount int) {
+func (q *QueueHandler) Run(workerCount int) {
 	for i := 0; i < workerCount; i++ {
-		jm.wg.Add(1)
-		go jm.worker()
+		q.wg.Add(1)
+		go q.worker()
 	}
 }
 
 // Stop stops the job queue.
-func (jm *JobQueueImpl) Stop() {
-	close(jm.quit)
-	jm.wg.Wait()
+func (q *QueueHandler) Stop() {
+	close(q.quit)
+	q.wg.Wait()
 }
