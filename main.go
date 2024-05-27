@@ -2,6 +2,7 @@ package main
 
 import (
 	"container-manager/handler"
+	"container-manager/job"
 	"container-manager/p2p"
 	"github.com/gorilla/rpc"
 	"github.com/gorilla/rpc/json"
@@ -10,8 +11,10 @@ import (
 )
 
 func main() {
+	jobQueue := job.NewQueue(10)
+
 	// setup p2p service
-	p2pService, err := p2p.NewP2PService()
+	p2pService, err := p2p.NewP2PService(jobQueue)
 	if err != nil {
 		logrus.Fatalf("Failed to create P2P service: %v", err)
 	}
@@ -19,7 +22,7 @@ func main() {
 
 	jrpcHandler := rpc.NewServer()
 	jrpcHandler.RegisterCodec(json.NewCodec(), "application/json")
-	err = jrpcHandler.RegisterService(new(handler.ContainerService), "")
+	err = jrpcHandler.RegisterService(handler.NewContainerService(jobQueue, p2pService), "")
 	if err != nil {
 		logrus.Fatalf("Failed to register service: %v", err)
 	}

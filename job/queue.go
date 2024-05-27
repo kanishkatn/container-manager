@@ -2,7 +2,13 @@ package job
 
 import (
 	"container-manager/types"
+	"fmt"
 	"sync"
+)
+
+var (
+	// ErrQueueFull is the error returned when the queue is full
+	ErrQueueFull = fmt.Errorf("job queue is full")
 )
 
 // job is the object that represents a job to be run.
@@ -20,7 +26,7 @@ type job struct {
 // Stop: Stops the job queue
 type Queue interface {
 	Enqueue(jobID string, container types.Container) error
-	GetStatus(jobID string) (string, bool)
+	GetStatus(jobID string) (types.JobStatus, bool)
 	Run(workerCount int)
 	Stop()
 }
@@ -32,19 +38,21 @@ type Queue interface {
 // wg: The wait group to wait for all workers to finish
 // quit: The channel to signal workers to quit
 type QueueHandler struct {
-	jobs      chan job
-	jobStatus map[string]types.JobStatus
-	mutex     sync.Mutex
-	wg        sync.WaitGroup
-	quit      chan bool
+	jobs          chan job
+	jobStatus     map[string]types.JobStatus
+	mutex         sync.Mutex
+	wg            sync.WaitGroup
+	quit          chan bool
+	dockerManager DockerManager
 }
 
 // NewQueue creates a new job queue.
 func NewQueue(size int) *QueueHandler {
 	return &QueueHandler{
-		jobs:      make(chan job, size),
-		jobStatus: make(map[string]types.JobStatus),
-		quit:      make(chan bool),
+		jobs:          make(chan job, size),
+		jobStatus:     make(map[string]types.JobStatus),
+		quit:          make(chan bool),
+		dockerManager: newDockerManager(),
 	}
 }
 
@@ -52,6 +60,10 @@ func NewQueue(size int) *QueueHandler {
 func (q *QueueHandler) Enqueue(jobID string, container types.Container) error {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
+
+	if len(q.jobs) == cap(q.jobs) {
+		return ErrQueueFull
+	}
 
 	jobToQueue := job{
 		ID:        jobID,
@@ -77,11 +89,8 @@ func (q *QueueHandler) worker() {
 
 	for {
 		select {
-		case job := <-q.jobs:
-			// TODO: Run the job
-			q.mutex.Lock()
-			q.jobStatus[job.ID] = types.JobStatusComplete
-			q.mutex.Unlock()
+		case newJob := <-q.jobs:
+			q.executeJob(newJob)
 		case <-q.quit:
 			return
 		}
@@ -100,4 +109,29 @@ func (q *QueueHandler) Run(workerCount int) {
 func (q *QueueHandler) Stop() {
 	close(q.quit)
 	q.wg.Wait()
+}
+
+// executeJob executes a job.
+func (q *QueueHandler) executeJob(job job) {
+	containerID, err := q.dockerManager.DeployContainer(job.container)
+	if err != nil {
+		q.updateJobStatus(job.ID, types.JobStatusFailed)
+	} else {
+		status, err := q.dockerManager.GetContainerStatus(containerID)
+		if err != nil {
+			q.updateJobStatus(job.ID, types.JobStatusFailed)
+		} else if status == "running" {
+			q.updateJobStatus(job.ID, types.JobStatusComplete)
+		} else {
+			q.updateJobStatus(job.ID, types.JobStatusFailed)
+		}
+	}
+}
+
+// updateJobStatus updates the status of a job.
+func (q *QueueHandler) updateJobStatus(jobID string, status types.JobStatus) {
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
+
+	q.jobStatus[jobID] = status
 }

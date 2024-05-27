@@ -1,18 +1,18 @@
 package p2p
 
 import (
+	"container-manager/job"
 	"container-manager/types"
 	"context"
 	"encoding/json"
+	"fmt"
+	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/sirupsen/logrus"
 	"sync"
-	"time"
-
-	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 const (
@@ -20,20 +20,16 @@ const (
 	ProtocolID = "/container-manager/1.0.0"
 	// ServiceName is the service name for mDNS discovery
 	ServiceName = "container-manager"
-	// CleanupInterval is the interval at which the message hash map is cleaned up
-	CleanupInterval = 10 * time.Minute
-	// MessageTTL is the time-to-live for each message hash
-	MessageTTL = 30 * time.Minute
 )
 
 // Message is a P2P message sent between peers
 // Type is the message type
-// Hash is the message hash
+// JobID is the identifier of the job
 // Data is the message data
 type Message struct {
-	Type string          `json:"type"`
-	Hash string          `json:"hash"`
-	Data json.RawMessage `json:"data"`
+	Type  types.P2PMessageType `json:"type"`
+	JobID string               `json:"job_id"`
+	Data  json.RawMessage      `json:"data"`
 }
 
 // peerNotifee is a notifee for peer discovery
@@ -60,9 +56,9 @@ func newPeerNotifee(handler *Service) *peerNotifee {
 type P2PService interface {
 	ID() string
 	Start()
+	Broadcast(msg Message) error
 	Stop()
 	Peers() map[peer.ID]peer.AddrInfo
-	Messages() map[string]time.Time
 }
 
 // Service is a P2P service
@@ -71,36 +67,31 @@ type P2PService interface {
 // peersLock is a mutex for peers
 // ctx is the service context
 // cancel is the cancel function for the service context
-// messages is a map of received messages
-// messagesLock is a mutex for messages
 type Service struct {
-	host         host.Host
-	peers        map[peer.ID]peer.AddrInfo
-	peersLock    sync.RWMutex
-	ctx          context.Context
-	cancel       context.CancelFunc
-	messages     map[string]time.Time
-	messagesLock sync.RWMutex
+	host      host.Host
+	peers     map[peer.ID]peer.AddrInfo
+	peersLock sync.RWMutex
+	ctx       context.Context
+	cancel    context.CancelFunc
+	jobQueue  job.Queue
 }
 
 // NewP2PService creates a new P2P service
-func NewP2PService() (*Service, error) {
+func NewP2PService(jobQueue job.Queue) (*Service, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	p2pHost, err := libp2p.New()
 	if err != nil {
 		cancel()
-		return nil, err
+		return nil, fmt.Errorf("failed to create libp2p host: %w", err)
 	}
 	service := &Service{
 		host:     p2pHost,
 		peers:    make(map[peer.ID]peer.AddrInfo),
 		ctx:      ctx,
 		cancel:   cancel,
-		messages: make(map[string]time.Time),
+		jobQueue: jobQueue,
 	}
-	// Start the cleanup goroutine
-	go service.cleanupMessages()
 
 	return service, nil
 }
@@ -124,6 +115,30 @@ func (s *Service) Start() {
 	logrus.Infof("P2P Service started with ID: %s", s.host.ID().String())
 }
 
+// Broadcast broadcasts a message to all peers
+func (s *Service) Broadcast(msg Message) error {
+	msgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return fmt.Errorf("failed to marshal message: %w", err)
+	}
+
+	for _, pi := range s.Peers() {
+		stream, err := s.host.NewStream(s.ctx, pi.ID, ProtocolID)
+		if err != nil {
+			logrus.Errorf("failed to create stream to peer %s: %v", pi.ID, err)
+			continue
+		}
+
+		_, err = stream.Write(msgBytes)
+		if err != nil {
+			logrus.Errorf("failed to write to stream: %v", err)
+			continue
+		}
+	}
+
+	return nil
+}
+
 // handleStream handles an incoming stream
 func (s *Service) handleStream(stream network.Stream) {
 	logrus.Trace("Handling stream")
@@ -143,41 +158,26 @@ func (s *Service) handleStream(stream network.Stream) {
 	}
 	logrus.WithField("message", msg).Trace("Received p2p message")
 
-	if s.isDuplicateMessage(msg.Hash) {
-		logrus.WithField("hash", msg.Hash).Trace("Duplicate message received")
+	if _, ok := s.jobQueue.GetStatus(msg.JobID); ok {
+		logrus.WithField("job_id", msg.JobID).Trace("Job has already entered the queue")
 		return
 	}
 
-	s.messagesLock.Lock()
-	s.messages[msg.Hash] = time.Now()
-	s.messagesLock.Unlock()
-
 	switch msg.Type {
-	case types.P2PMessageTypeDeployContainer.String():
-	// TODO: Handle the deployment request
-	default:
-		logrus.Warnf("unknown message type: %s", msg.Type)
-	}
-}
-
-// cleanupMessages periodically removes old message hashes
-func (s *Service) cleanupMessages() {
-	ticker := time.NewTicker(CleanupInterval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			s.messagesLock.Lock()
-			for hash, timestamp := range s.messages {
-				if time.Since(timestamp) > MessageTTL {
-					delete(s.messages, hash)
-				}
-			}
-			s.messagesLock.Unlock()
-		case <-s.ctx.Done():
+	case types.P2PMessageTypeDeployContainer:
+		var container types.Container
+		if err := json.Unmarshal(msg.Data, &container); err != nil {
+			logrus.Errorf("failed to unmarshal container data: %v", err)
 			return
 		}
+
+		if err := s.jobQueue.Enqueue(msg.JobID, container); err != nil {
+			logrus.Errorf("failed to enqueue job: %v", err)
+			return
+		}
+
+	default:
+		logrus.Warnf("unknown message type: %s", msg.Type)
 	}
 }
 
@@ -193,19 +193,4 @@ func (s *Service) Peers() map[peer.ID]peer.AddrInfo {
 	s.peersLock.RLock()
 	defer s.peersLock.RUnlock()
 	return s.peers
-}
-
-// Messages returns the received messages
-func (s *Service) Messages() map[string]time.Time {
-	s.messagesLock.RLock()
-	defer s.messagesLock.RUnlock()
-	return s.messages
-}
-
-// isDuplicateMessage checks if a message hash is a duplicate
-func (s *Service) isDuplicateMessage(hash string) bool {
-	s.messagesLock.RLock()
-	_, ok := s.messages[hash]
-	s.messagesLock.RUnlock()
-	return ok
 }
