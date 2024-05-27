@@ -33,7 +33,7 @@ type JobQueue interface {
 // quit: The channel to signal workers to quit
 type JobQueueImpl struct {
 	jobQueue  chan job
-	jobStatus map[string]string
+	jobStatus map[string]types.JobStatus
 	mutex     sync.Mutex
 	wg        sync.WaitGroup
 	quit      chan bool
@@ -43,7 +43,7 @@ type JobQueueImpl struct {
 func NewJobQueue(size int) *JobQueueImpl {
 	return &JobQueueImpl{
 		jobQueue:  make(chan job, size),
-		jobStatus: make(map[string]string),
+		jobStatus: make(map[string]types.JobStatus),
 		quit:      make(chan bool),
 	}
 }
@@ -58,12 +58,12 @@ func (jm *JobQueueImpl) Enqueue(jobID string, container types.Container) error {
 		container: container,
 	}
 	jm.jobQueue <- jobToQueue
-	jm.jobStatus[jobToQueue.ID] = string(types.JobStatusPending)
+	jm.jobStatus[jobToQueue.ID] = types.JobStatusPending
 	return nil
 }
 
 // GetStatus gets the status of a job.
-func (jm *JobQueueImpl) GetStatus(jobID string) (string, bool) {
+func (jm *JobQueueImpl) GetStatus(jobID string) (types.JobStatus, bool) {
 	jm.mutex.Lock()
 	defer jm.mutex.Unlock()
 
@@ -80,7 +80,7 @@ func (jm *JobQueueImpl) worker() {
 		case job := <-jm.jobQueue:
 			// TODO: Run the job
 			jm.mutex.Lock()
-			jm.jobStatus[job.ID] = string(types.JobStatusComplete)
+			jm.jobStatus[job.ID] = types.JobStatusComplete
 			jm.mutex.Unlock()
 		case <-jm.quit:
 			return

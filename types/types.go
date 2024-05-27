@@ -1,17 +1,15 @@
 package types
 
 // Container is the object that represents a container to be run.
-// target_machine: The machine to run the job on
-// container_image: The container image to run
+// image: The container image to run
 // arguments: The arguments to pass to the container
 // resources: The resources to allocate for the job
 // env: The environment variables to set for the job
 type Container struct {
-	TargetMachine  string            `json:"target_machine"`
-	ContainerImage string            `json:"container_image"`
-	Arguments      []string          `json:"arguments"`
-	Resources      map[string]string `json:"resources"`
-	Env            map[string]string `json:"env"`
+	Image     string            `json:"image"`
+	Arguments []string          `json:"arguments"`
+	Resources map[string]string `json:"resources"`
+	Env       map[string]string `json:"env"`
 }
 
 type JobStatus string
@@ -21,3 +19,17 @@ const (
 	JobStatusComplete JobStatus = "complete"
 	JobStatusFailed   JobStatus = "failed"
 )
+
+func (js JobStatus) String() string {
+	return string(js)
+}
+
+type P2PMessageType string
+
+const (
+	P2PMessageTypeDeployContainer P2PMessageType = "deploy_container"
+)
+
+func (pm P2PMessageType) String() string {
+	return string(pm)
+}

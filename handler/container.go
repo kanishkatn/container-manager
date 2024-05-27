@@ -23,11 +23,10 @@ type ContainerService struct{}
 // Create creates a new container.
 func (cs *ContainerService) Create(r *http.Request, req *ContainerRequest, res *ContainerResponse) error {
 	logrus.WithFields(logrus.Fields{
-		"target_machine":  req.TargetMachine,
-		"container_image": req.ContainerImage,
-		"arguments":       req.Arguments,
-		"resources":       req.Resources,
-		"env":             req.Env,
+		"image":     req.Image,
+		"arguments": req.Arguments,
+		"resources": req.Resources,
+		"env":       req.Env,
 	}).Debugf("Running job")
 	// TODO: Implement job creation
 	return nil
