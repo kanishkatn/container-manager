@@ -3,8 +3,7 @@ package cmd
 import (
 	cfg "container-manager/config"
 	"container-manager/handler"
-	"container-manager/job"
-	"container-manager/p2p"
+	"container-manager/services"
 	"fmt"
 	"net/http"
 
@@ -59,15 +58,17 @@ func Execute() {
 
 // runNode runs the container manager node
 func runNode() error {
-	jobQueue, err := job.NewQueue(config.QueueSize)
+	ds, err := services.NewDockerService()
 	if err != nil {
-		return fmt.Errorf("failed to create job queue: %w", err)
+		return fmt.Errorf("failed to create docker service: %w", err)
 	}
+
+	jobQueue := services.NewQueue(config.QueueSize, ds)
 	jobQueue.Run(config.WorkerCount)
 
 	// setup p2p service
 	logrus.Infof("Starting P2P service")
-	p2pService, err := p2p.NewP2PService(jobQueue)
+	p2pService, err := services.NewP2PService(jobQueue)
 	if err != nil {
 		return fmt.Errorf("failed to create P2P service: %w", err)
 	}

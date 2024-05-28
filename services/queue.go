@@ -1,4 +1,4 @@
-package job
+package services
 
 import (
 	"container-manager/types"
@@ -45,22 +45,17 @@ type QueueHandler struct {
 	mutex         sync.Mutex
 	wg            sync.WaitGroup
 	quit          chan bool
-	dockerManager DockerManager
+	dockerService DockerService
 }
 
 // NewQueue creates a new job queue.
-func NewQueue(size int) (*QueueHandler, error) {
-	dm, err := newDockerManager()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Docker manager: %w", err)
-	}
-
+func NewQueue(size int, ds DockerService) *QueueHandler {
 	return &QueueHandler{
 		jobs:          make(chan job, size),
 		jobStatus:     make(map[string]types.JobStatus),
 		quit:          make(chan bool),
-		dockerManager: dm,
-	}, nil
+		dockerService: ds,
+	}
 }
 
 // Enqueue enqueues a job to be run.
@@ -124,12 +119,12 @@ func (q *QueueHandler) Stop() {
 // executeJob executes a job.
 func (q *QueueHandler) executeJob(job job) {
 	// TODO: retry mechanism
-	containerID, err := q.dockerManager.DeployContainer(job.container)
+	containerID, err := q.dockerService.DeployContainer(job.container)
 	if err != nil {
 		logrus.WithField("job_id", job.id).Errorf("failed to deploy container: %v", err)
 		q.updateJobStatus(job.id, types.JobStatusFailed)
 	} else {
-		status, err := q.dockerManager.GetContainerStatus(containerID)
+		status, err := q.dockerService.GetContainerStatus(containerID)
 		switch {
 		case err != nil:
 			q.updateJobStatus(job.id, types.JobStatusFailed)

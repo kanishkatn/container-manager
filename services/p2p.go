@@ -1,7 +1,6 @@
-package p2p
+package services
 
 import (
-	"container-manager/job"
 	"container-manager/types"
 	"context"
 	"encoding/json"
@@ -73,11 +72,11 @@ type Service struct {
 	host     host.Host
 	ctx      context.Context
 	cancel   context.CancelFunc
-	jobQueue job.Queue
+	jobQueue Queue
 }
 
 // NewP2PService creates a new P2P service
-func NewP2PService(jobQueue job.Queue) (*Service, error) {
+func NewP2PService(jobQueue Queue) (*Service, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	containerIP, err := getHostIP()

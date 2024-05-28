@@ -1,4 +1,4 @@
-package job
+package services
 
 import (
 	"container-manager/types"
@@ -13,31 +13,31 @@ import (
 	"github.com/docker/docker/client"
 )
 
-// DockerManager interface to deploy and get container status
-type DockerManager interface {
+// DockerService service interface to deploy and get container status
+type DockerService interface {
 	DeployContainer(container types.Container) (string, error)
 	GetContainerStatus(containerID string) (string, error)
 }
 
-// dockerManager is the implementation of the DockerManager interface
+// DockerServiceHandler is the implementation of the DockerService interface
 // client: The Docker client
-type dockerManager struct {
+type DockerServiceHandler struct {
 	client *client.Client
 }
 
-// newDockerManager creates a new DockerManager instance
-func newDockerManager() (*dockerManager, error) {
+// NewDockerService creates a new DockerServiceHandler instance
+func NewDockerService() (*DockerServiceHandler, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Docker client: %w", err)
 	}
-	return &dockerManager{
+	return &DockerServiceHandler{
 		client: cli,
 	}, nil
 }
 
 // DeployContainer deploys a container using Docker
-func (d *dockerManager) DeployContainer(container types.Container) (string, error) {
+func (ds *DockerServiceHandler) DeployContainer(container types.Container) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
@@ -46,7 +46,7 @@ func (d *dockerManager) DeployContainer(container types.Container) (string, erro
 		envVars = append(envVars, key+"="+value)
 	}
 
-	reader, err := d.client.ImagePull(ctx, container.Image, image.PullOptions{})
+	reader, err := ds.client.ImagePull(ctx, container.Image, image.PullOptions{})
 	if err != nil {
 		return "", fmt.Errorf("failed to pull image: %w", err)
 	}
@@ -54,7 +54,7 @@ func (d *dockerManager) DeployContainer(container types.Container) (string, erro
 
 	io.Copy(io.Discard, reader)
 
-	resp, err := d.client.ContainerCreate(ctx, &dockerContainer.Config{
+	resp, err := ds.client.ContainerCreate(ctx, &dockerContainer.Config{
 		Image: container.Image,
 		Cmd:   container.Arguments,
 		Env:   envVars,
@@ -63,7 +63,7 @@ func (d *dockerManager) DeployContainer(container types.Container) (string, erro
 		return "", fmt.Errorf("failed to create container: %w", err)
 	}
 
-	if err := d.client.ContainerStart(ctx, resp.ID, dockerContainer.StartOptions{}); err != nil {
+	if err := ds.client.ContainerStart(ctx, resp.ID, dockerContainer.StartOptions{}); err != nil {
 		return "", fmt.Errorf("failed to start container: %w", err)
 	}
 
@@ -71,11 +71,11 @@ func (d *dockerManager) DeployContainer(container types.Container) (string, erro
 }
 
 // GetContainerStatus gets the status of a container by container ID
-func (d *dockerManager) GetContainerStatus(containerID string) (string, error) {
+func (ds *DockerServiceHandler) GetContainerStatus(containerID string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	containerJSON, err := d.client.ContainerInspect(ctx, containerID)
+	containerJSON, err := ds.client.ContainerInspect(ctx, containerID)
 	if err != nil {
 		return "", fmt.Errorf("failed to inspect container: %w", err)
 	}

@@ -1,9 +1,9 @@
-package job_test
+package services
 
 import (
-	"container-manager/job"
 	"container-manager/types"
 	"fmt"
+	"go.uber.org/mock/gomock"
 	"sync"
 	"testing"
 	"time"
@@ -15,13 +15,20 @@ import (
 func TestJobQueueImpl(t *testing.T) {
 	queueSize := 10
 	workerCount := 3
+	jobCount := 5
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Create a mock Docker service
+	mockDockerService := NewMockDockerService(ctrl)
+	mockDockerService.EXPECT().DeployContainer(types.Container{}).Times(jobCount).Return("container-id", nil)
+	mockDockerService.EXPECT().GetContainerStatus("container-id").Times(jobCount).Return("running", nil)
 
 	// Create a new job queue
-	jobQueue, err := job.NewQueue(queueSize)
-	require.NoError(t, err)
+	jobQueue := NewQueue(queueSize, mockDockerService)
 
 	// Enqueue some jobs
-	jobCount := 5
 	for i := 0; i < jobCount; i++ {
 		jobID := fmt.Sprintf("job-%d", i)
 		err := jobQueue.Enqueue(jobID, types.Container{})
@@ -49,13 +56,20 @@ func TestJobQueueImpl(t *testing.T) {
 func TestJobQueueImplConcurrentEnqueue(t *testing.T) {
 	queueSize := 100
 	workerCount := 5
+	jobCount := 50
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Create a mock Docker service
+	mockDockerService := NewMockDockerService(ctrl)
+	mockDockerService.EXPECT().DeployContainer(types.Container{}).Times(jobCount).Return("container-id", nil)
+	mockDockerService.EXPECT().GetContainerStatus("container-id").Times(jobCount).Return("running", nil)
 
 	// Create a new job queue
-	jobQueue, err := job.NewQueue(queueSize)
-	require.NoError(t, err)
+	jobQueue := NewQueue(queueSize, mockDockerService)
 
 	// Enqueue jobs concurrently
-	jobCount := 50
 	var wg sync.WaitGroup
 	for i := 0; i < jobCount; i++ {
 		wg.Add(1)

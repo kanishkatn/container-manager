@@ -1,8 +1,7 @@
 package handler
 
 import (
-	"container-manager/job"
-	"container-manager/p2p"
+	"container-manager/services"
 	"container-manager/types"
 	"encoding/json"
 	"fmt"
@@ -27,12 +26,12 @@ type ContainerResponse struct {
 
 // ContainerService is the service that handles container creation.
 type ContainerService struct {
-	jobQueue   job.Queue
-	p2pService p2p.P2PService
+	jobQueue   services.Queue
+	p2pService services.P2PService
 }
 
 // NewContainerService creates a new container service.
-func NewContainerService(jobQueue job.Queue, p2pService p2p.P2PService) *ContainerService {
+func NewContainerService(jobQueue services.Queue, p2pService services.P2PService) *ContainerService {
 	return &ContainerService{
 		jobQueue:   jobQueue,
 		p2pService: p2pService,
@@ -66,7 +65,7 @@ func (cs *ContainerService) Create(r *http.Request, req *ContainerRequest, res *
 	if err != nil {
 		return fmt.Errorf("failed to marshal container data: %w", err)
 	}
-	msg := p2p.Message{
+	msg := services.Message{
 		Type:  types.P2PMessageTypeDeployContainer,
 		JobID: jobID.String(),
 		Data:  containerData,
