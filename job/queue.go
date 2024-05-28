@@ -3,6 +3,7 @@ package job
 import (
 	"container-manager/types"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"sync"
 )
 
@@ -61,6 +62,8 @@ func (q *QueueHandler) Enqueue(jobID string, container types.Container) error {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 
+	logrus.WithField("job_id", jobID).Info("enqueuing job")
+
 	if len(q.jobs) == cap(q.jobs) {
 		return ErrQueueFull
 	}
@@ -90,6 +93,7 @@ func (q *QueueHandler) worker() {
 	for {
 		select {
 		case newJob := <-q.jobs:
+			logrus.WithField("job_id", newJob.ID).Info("running job")
 			q.executeJob(newJob)
 		case <-q.quit:
 			return
@@ -115,6 +119,7 @@ func (q *QueueHandler) Stop() {
 func (q *QueueHandler) executeJob(job job) {
 	containerID, err := q.dockerManager.DeployContainer(job.container)
 	if err != nil {
+		logrus.WithField("job_id", job.ID).Errorf("failed to deploy container: %v", err)
 		q.updateJobStatus(job.ID, types.JobStatusFailed)
 	} else {
 		status, err := q.dockerManager.GetContainerStatus(containerID)
@@ -125,6 +130,7 @@ func (q *QueueHandler) executeJob(job job) {
 		} else {
 			q.updateJobStatus(job.ID, types.JobStatusFailed)
 		}
+		logrus.WithField("job_id", job.ID).Infof("container deployed successfully")
 	}
 }
 

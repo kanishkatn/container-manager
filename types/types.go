@@ -1,5 +1,7 @@
 package types
 
+import "fmt"
+
 // Container is the object that represents a container to be run.
 // image: The container image to run
 // arguments: The arguments to pass to the container
@@ -10,6 +12,13 @@ type Container struct {
 	Arguments []string          `json:"arguments"`
 	Resources map[string]string `json:"resources"`
 	Env       map[string]string `json:"env"`
+}
+
+func (c Container) Validate() error {
+	if c.Image == "" {
+		return fmt.Errorf("image is required")
+	}
+	return nil
 }
 
 type JobStatus string

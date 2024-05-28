@@ -17,7 +17,8 @@ type ContainerRequest struct {
 }
 
 // ContainerResponse is the response object for the ContainerService.Create method.
-// job_id: The ID of the job that was created
+// JobID: The ID of the job that was created
+// Message: A message
 type ContainerResponse struct {
 	JobID   string `json:"job_id"`
 	Message string `json:"message"`
@@ -45,6 +46,10 @@ func (cs *ContainerService) Create(r *http.Request, req *ContainerRequest, res *
 		"resources": req.Resources,
 		"env":       req.Env,
 	}).Debugf("queueing and broadcasting job")
+	if err := req.Container.Validate(); err != nil {
+		return fmt.Errorf("invalid request: %w", err)
+	}
+
 	jobID, err := uuid.NewUUID()
 	if err != nil {
 		return fmt.Errorf("failed to generate job ID: %w", err)

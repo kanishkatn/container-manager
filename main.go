@@ -8,12 +8,20 @@ import (
 	"github.com/gorilla/rpc/json"
 	"github.com/sirupsen/logrus"
 	"net/http"
+	"os"
 )
 
 func main() {
 	jobQueue := job.NewQueue(10)
+	jobQueue.Run(2)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	address := "0.0.0.0:" + port
 
 	// setup p2p service
+	logrus.Infof("Starting P2P service")
 	p2pService, err := p2p.NewP2PService(jobQueue)
 	if err != nil {
 		logrus.Fatalf("Failed to create P2P service: %v", err)
@@ -28,6 +36,6 @@ func main() {
 	}
 	http.Handle("/jrpc", jrpcHandler)
 
-	logrus.Info("Starting jrpc server on port 8080")
-	logrus.Fatal(http.ListenAndServe(":8080", nil))
+	logrus.Infof("JRPC server listening on port %s", port)
+	logrus.Fatal(http.ListenAndServe(address, nil))
 }

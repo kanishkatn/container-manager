@@ -10,9 +10,13 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
+	"github.com/multiformats/go-multiaddr"
 	"github.com/sirupsen/logrus"
-	"sync"
+	"net"
+	"os"
+	"strings"
 )
 
 const (
@@ -39,10 +43,8 @@ type peerNotifee struct {
 
 // HandlePeerFound is called when a new peer is discovered
 func (pn *peerNotifee) HandlePeerFound(pi peer.AddrInfo) {
-	logrus.WithField("peer", pi.ID).Trace("Peer discovered")
-	pn.handler.peersLock.Lock()
-	pn.handler.peers[pi.ID] = pi
-	pn.handler.peersLock.Unlock()
+	logrus.WithField("peer", pi.ID).Info("Peer discovered")
+	pn.handler.host.Peerstore().AddAddrs(pi.ID, pi.Addrs, peerstore.PermanentAddrTTL)
 }
 
 // newPeerNotifee creates a new peer notifee
@@ -58,7 +60,6 @@ type P2PService interface {
 	Start()
 	Broadcast(msg Message) error
 	Stop()
-	Peers() map[peer.ID]peer.AddrInfo
 }
 
 // Service is a P2P service
@@ -68,26 +69,41 @@ type P2PService interface {
 // ctx is the service context
 // cancel is the cancel function for the service context
 type Service struct {
-	host      host.Host
-	peers     map[peer.ID]peer.AddrInfo
-	peersLock sync.RWMutex
-	ctx       context.Context
-	cancel    context.CancelFunc
-	jobQueue  job.Queue
+	host     host.Host
+	ctx      context.Context
+	cancel   context.CancelFunc
+	jobQueue job.Queue
 }
 
 // NewP2PService creates a new P2P service
 func NewP2PService(jobQueue job.Queue) (*Service, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	p2pHost, err := libp2p.New()
+	containerIP, err := getHostIP()
+	if err != nil {
+		cancel()
+		return nil, fmt.Errorf("failed to get container IP: %w", err)
+	}
+
+	var listenAddrs []multiaddr.Multiaddr
+	for _, port := range []int{4001, 4002} { // Replace with the actual ports you want to use
+		addr, err := multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/%s/tcp/%d", containerIP, port))
+		if err != nil {
+			cancel()
+			return nil, fmt.Errorf("failed to create multiaddr: %w", err)
+		}
+		listenAddrs = append(listenAddrs, addr)
+	}
+
+	p2pHost, err := libp2p.New(
+		libp2p.ListenAddrs(listenAddrs...),
+	)
 	if err != nil {
 		cancel()
 		return nil, fmt.Errorf("failed to create libp2p host: %w", err)
 	}
 	service := &Service{
 		host:     p2pHost,
-		peers:    make(map[peer.ID]peer.AddrInfo),
 		ctx:      ctx,
 		cancel:   cancel,
 		jobQueue: jobQueue,
@@ -122,10 +138,14 @@ func (s *Service) Broadcast(msg Message) error {
 		return fmt.Errorf("failed to marshal message: %w", err)
 	}
 
-	for _, pi := range s.Peers() {
-		stream, err := s.host.NewStream(s.ctx, pi.ID, ProtocolID)
+	for _, pi := range s.host.Peerstore().Peers() {
+		if pi == s.host.ID() {
+			continue
+		}
+
+		stream, err := s.host.NewStream(s.ctx, pi, ProtocolID)
 		if err != nil {
-			logrus.Errorf("failed to create stream to peer %s: %v", pi.ID, err)
+			logrus.Errorf("failed to create stream to peer %s: %v", pi, err)
 			continue
 		}
 
@@ -171,6 +191,11 @@ func (s *Service) handleStream(stream network.Stream) {
 			return
 		}
 
+		if err := container.Validate(); err != nil {
+			logrus.Errorf("invalid container data: %v", err)
+			return
+		}
+
 		if err := s.jobQueue.Enqueue(msg.JobID, container); err != nil {
 			logrus.Errorf("failed to enqueue job: %v", err)
 			return
@@ -188,9 +213,23 @@ func (s *Service) Stop() {
 	s.host.Close()
 }
 
-// Peers returns the discovered peers
-func (s *Service) Peers() map[peer.ID]peer.AddrInfo {
-	s.peersLock.RLock()
-	defer s.peersLock.RUnlock()
-	return s.peers
+// getHostIP retrieves the host's IP address
+func getHostIP() (string, error) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return "", fmt.Errorf("failed to get hostname: %w", err)
+	}
+
+	addrs, err := net.LookupHost(hostname)
+	if err != nil {
+		return "", fmt.Errorf("failed to lookup host: %w", err)
+	}
+
+	for _, addr := range addrs {
+		if strings.Contains(addr, ".") { // IPv4 address
+			return addr, nil
+		}
+	}
+
+	return "", fmt.Errorf("no IPv4 address found for hostname %s", hostname)
 }

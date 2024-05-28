@@ -4,6 +4,8 @@ import (
 	"container-manager/types"
 	"context"
 	"fmt"
+	"github.com/docker/docker/api/types/image"
+	"io"
 	"time"
 
 	dockerContainer "github.com/docker/docker/api/types/container"
@@ -37,6 +39,14 @@ func (d *dockerManager) DeployContainer(container types.Container) (string, erro
 	for key, value := range container.Env {
 		envVars = append(envVars, key+"="+value)
 	}
+
+	reader, err := cli.ImagePull(ctx, container.Image, image.PullOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to pull image: %w", err)
+	}
+	defer reader.Close()
+
+	io.Copy(io.Discard, reader)
 
 	resp, err := cli.ContainerCreate(ctx, &dockerContainer.Config{
 		Image: container.Image,
