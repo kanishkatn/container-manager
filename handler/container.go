@@ -18,7 +18,7 @@ type ContainerRequest struct {
 
 // ContainerResponse is the response object for the ContainerService.Create method.
 // JobID: The ID of the job that was created
-// Message: A message
+// Message: A response message
 type ContainerResponse struct {
 	JobID   string `json:"job_id"`
 	Message string `json:"message"`
