@@ -17,7 +17,8 @@ func TestJobQueueImpl(t *testing.T) {
 	workerCount := 3
 
 	// Create a new job queue
-	jobQueue := job.NewQueue(queueSize)
+	jobQueue, err := job.NewQueue(queueSize)
+	require.NoError(t, err)
 
 	// Enqueue some jobs
 	jobCount := 5
@@ -50,7 +51,8 @@ func TestJobQueueImplConcurrentEnqueue(t *testing.T) {
 	workerCount := 5
 
 	// Create a new job queue
-	jobQueue := job.NewQueue(queueSize)
+	jobQueue, err := job.NewQueue(queueSize)
+	require.NoError(t, err)
 
 	// Enqueue jobs concurrently
 	jobCount := 50

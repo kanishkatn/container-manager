@@ -3,8 +3,9 @@ package job
 import (
 	"container-manager/types"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"sync"
+
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -13,10 +14,10 @@ var (
 )
 
 // job is the object that represents a job to be run.
-// ID: The ID of the job
+// id: The ID of the job
 // container: The container to run
 type job struct {
-	ID        string
+	id        string
 	container types.Container
 }
 
@@ -48,13 +49,18 @@ type QueueHandler struct {
 }
 
 // NewQueue creates a new job queue.
-func NewQueue(size int) *QueueHandler {
+func NewQueue(size int) (*QueueHandler, error) {
+	dm, err := newDockerManager()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Docker manager: %w", err)
+	}
+
 	return &QueueHandler{
 		jobs:          make(chan job, size),
 		jobStatus:     make(map[string]types.JobStatus),
 		quit:          make(chan bool),
-		dockerManager: newDockerManager(),
-	}
+		dockerManager: dm,
+	}, nil
 }
 
 // Enqueue enqueues a job to be run.
@@ -69,11 +75,11 @@ func (q *QueueHandler) Enqueue(jobID string, container types.Container) error {
 	}
 
 	jobToQueue := job{
-		ID:        jobID,
+		id:        jobID,
 		container: container,
 	}
 	q.jobs <- jobToQueue
-	q.jobStatus[jobToQueue.ID] = types.JobStatusPending
+	q.jobStatus[jobToQueue.id] = types.JobStatusPending
 	return nil
 }
 
@@ -93,7 +99,7 @@ func (q *QueueHandler) worker() {
 	for {
 		select {
 		case newJob := <-q.jobs:
-			logrus.WithField("job_id", newJob.ID).Info("running job")
+			logrus.WithField("job_id", newJob.id).Info("running job")
 			q.executeJob(newJob)
 		case <-q.quit:
 			return
@@ -117,20 +123,22 @@ func (q *QueueHandler) Stop() {
 
 // executeJob executes a job.
 func (q *QueueHandler) executeJob(job job) {
+	// TODO: retry mechanism
 	containerID, err := q.dockerManager.DeployContainer(job.container)
 	if err != nil {
-		logrus.WithField("job_id", job.ID).Errorf("failed to deploy container: %v", err)
-		q.updateJobStatus(job.ID, types.JobStatusFailed)
+		logrus.WithField("job_id", job.id).Errorf("failed to deploy container: %v", err)
+		q.updateJobStatus(job.id, types.JobStatusFailed)
 	} else {
 		status, err := q.dockerManager.GetContainerStatus(containerID)
-		if err != nil {
-			q.updateJobStatus(job.ID, types.JobStatusFailed)
-		} else if status == "running" {
-			q.updateJobStatus(job.ID, types.JobStatusComplete)
-		} else {
-			q.updateJobStatus(job.ID, types.JobStatusFailed)
+		switch {
+		case err != nil:
+			q.updateJobStatus(job.id, types.JobStatusFailed)
+		case status == "running":
+			q.updateJobStatus(job.id, types.JobStatusComplete)
+		default:
+			q.updateJobStatus(job.id, types.JobStatusFailed)
 		}
-		logrus.WithField("job_id", job.ID).Infof("container deployed successfully")
+		logrus.WithField("job_id", job.id).Infof("container deployed successfully")
 	}
 }
 

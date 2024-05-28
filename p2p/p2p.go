@@ -6,6 +6,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
+	"os"
+	"strings"
+
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -14,9 +18,6 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/sirupsen/logrus"
-	"net"
-	"os"
-	"strings"
 )
 
 const (
@@ -131,7 +132,7 @@ func (s *Service) Start() {
 	logrus.Infof("P2P Service started with ID: %s", s.host.ID().String())
 }
 
-// Broadcast broadcasts a message to all peers
+// Broadcast broadcasts a message to all peers in the peerstore
 func (s *Service) Broadcast(msg Message) error {
 	msgBytes, err := json.Marshal(msg)
 	if err != nil {
@@ -139,6 +140,7 @@ func (s *Service) Broadcast(msg Message) error {
 	}
 
 	for _, pi := range s.host.Peerstore().Peers() {
+		// Skip broadcasting to self
 		if pi == s.host.ID() {
 			continue
 		}
@@ -178,6 +180,7 @@ func (s *Service) handleStream(stream network.Stream) {
 	}
 	logrus.WithField("message", msg).Trace("Received p2p message")
 
+	// skip if job is already seen
 	if _, ok := s.jobQueue.GetStatus(msg.JobID); ok {
 		logrus.WithField("job_id", msg.JobID).Trace("Job has already entered the queue")
 		return

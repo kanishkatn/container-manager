@@ -6,9 +6,10 @@ import (
 	"container-manager/types"
 	"encoding/json"
 	"fmt"
+	"net/http"
+
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
-	"net/http"
 )
 
 // ContainerRequest is the request object for the ContainerService.Create method.

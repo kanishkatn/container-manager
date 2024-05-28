@@ -59,7 +59,10 @@ func Execute() {
 
 // runNode runs the container manager node
 func runNode() error {
-	jobQueue := job.NewQueue(config.QueueSize)
+	jobQueue, err := job.NewQueue(config.QueueSize)
+	if err != nil {
+		return fmt.Errorf("failed to create job queue: %w", err)
+	}
 	jobQueue.Run(config.WorkerCount)
 
 	// setup p2p service
@@ -70,6 +73,7 @@ func runNode() error {
 	}
 	p2pService.Start()
 
+	// setup jrpc handler
 	jrpcHandler := rpc.NewServer()
 	jrpcHandler.RegisterCodec(json.NewCodec(), "application/json")
 	err = jrpcHandler.RegisterService(handler.NewContainerService(jobQueue, p2pService), "")
@@ -81,7 +85,7 @@ func runNode() error {
 	logrus.Infof("JRPC server listening on port %s", config.Port)
 	address := fmt.Sprintf("%s:%s", config.ListenAddress, config.Port)
 	if err := http.ListenAndServe(address, nil); err != nil {
-		return fmt.Errorf("failed to listen and serve: %w", err)
+		return fmt.Errorf("failed to start jrpc server: %w", err)
 	}
 
 	return nil
