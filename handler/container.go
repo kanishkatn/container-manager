@@ -11,15 +11,28 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// ContainerRequest is the request object for the ContainerService.Create method.
-type ContainerRequest struct {
+// ContainerCreateRequest is the request object for the ContainerService.Create method.
+type ContainerCreateRequest struct {
 	types.Container
 }
 
-// ContainerResponse is the response object for the ContainerService.Create method.
+// ContainerCreateResponse is the response object for the ContainerService.Create method.
 // JobID: The ID of the job that was created
 // Message: A response message
-type ContainerResponse struct {
+type ContainerCreateResponse struct {
+	JobID   string `json:"job_id"`
+	Message string `json:"message"`
+}
+
+// ContainerStatusRequest is the request object for the ContainerService.Status method.
+type ContainerStatusRequest struct {
+	JobID string `json:"job_id"`
+}
+
+// ContainerStatusResponse is the response object for the ContainerService.Status method.
+// JobID: The ID of the job
+// Message: The status of the job
+type ContainerStatusResponse struct {
 	JobID   string `json:"job_id"`
 	Message string `json:"message"`
 }
@@ -39,7 +52,11 @@ func NewContainerService(jobQueue services.Queue, p2pService services.P2PService
 }
 
 // Create creates a new container.
-func (cs *ContainerService) Create(r *http.Request, req *ContainerRequest, res *ContainerResponse) error {
+func (cs *ContainerService) Create(r *http.Request, req *ContainerCreateRequest, res *ContainerCreateResponse) error {
+	if req == nil {
+		return fmt.Errorf("invalid request")
+	}
+
 	logrus.WithFields(logrus.Fields{
 		"image":     req.Image,
 		"arguments": req.Arguments,
@@ -81,13 +98,17 @@ func (cs *ContainerService) Create(r *http.Request, req *ContainerRequest, res *
 }
 
 // Status returns the status of a job.
-func (cs *ContainerService) Status(r *http.Request, jobID string, res *ContainerResponse) error {
-	status, ok := cs.jobQueue.GetStatus(jobID)
+func (cs *ContainerService) Status(r *http.Request, req *ContainerStatusRequest, res *ContainerStatusResponse) error {
+	if req == nil {
+		return fmt.Errorf("invalid request")
+	}
+
+	status, ok := cs.jobQueue.GetStatus(req.JobID)
 	if !ok {
 		return fmt.Errorf("job not found")
 	}
 
-	res.JobID = jobID
+	res.JobID = req.JobID
 	res.Message = status.String()
 
 	return nil
