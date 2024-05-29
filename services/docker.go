@@ -4,6 +4,7 @@ import (
 	"container-manager/types"
 	"context"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"io"
 	"time"
 
@@ -38,6 +39,8 @@ func NewDockerService() (*DockerServiceHandler, error) {
 
 // DeployContainer deploys a container using Docker
 func (ds *DockerServiceHandler) DeployContainer(container types.Container) (string, error) {
+	logrus.WithField("container", container).Debug("Deploying container")
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
@@ -72,6 +75,8 @@ func (ds *DockerServiceHandler) DeployContainer(container types.Container) (stri
 
 // GetContainerStatus gets the status of a container by container ID
 func (ds *DockerServiceHandler) GetContainerStatus(containerID string) (string, error) {
+	logrus.WithField("container_id", containerID).Debug("Getting container status")
+
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 

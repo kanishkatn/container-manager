@@ -33,8 +33,8 @@ type ContainerStatusRequest struct {
 // JobID: The ID of the job
 // Message: The status of the job
 type ContainerStatusResponse struct {
-	JobID   string `json:"job_id"`
-	Message string `json:"message"`
+	JobID  string `json:"job_id"`
+	Status string `json:"status"`
 }
 
 // ContainerService is the service that handles container creation.
@@ -103,13 +103,15 @@ func (cs *ContainerService) Status(r *http.Request, req *ContainerStatusRequest,
 		return fmt.Errorf("invalid request")
 	}
 
+	logrus.WithField("job_id", req.JobID).Debug("getting job status")
+
 	status, ok := cs.jobQueue.GetStatus(req.JobID)
 	if !ok {
 		return fmt.Errorf("job not found")
 	}
 
 	res.JobID = req.JobID
-	res.Message = status.String()
+	res.Status = status.String()
 
 	return nil
 }

@@ -63,7 +63,7 @@ func (q *QueueHandler) Enqueue(jobID string, container types.Container) error {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 
-	logrus.WithField("job_id", jobID).Info("enqueuing job")
+	logrus.WithField("job_id", jobID).Debug("enqueuing job")
 
 	if len(q.jobs) == cap(q.jobs) {
 		return ErrQueueFull

@@ -55,6 +55,8 @@ func newPeerNotifee(handler *Service) *peerNotifee {
 // P2PService is the interface for a P2P service
 // Start starts the service
 // Stop stops the service
+// Broadcast broadcasts a message to all peers
+// ID returns the ID of the p2p host
 type P2PService interface {
 	ID() string
 	Start()
@@ -129,6 +131,8 @@ func (s *Service) Start() {
 
 // Broadcast broadcasts a message to all peers in the peerstore
 func (s *Service) Broadcast(msg Message) error {
+	logrus.WithField("message", msg).Debug("Broadcasting message")
+
 	msgBytes, err := json.Marshal(msg)
 	if err != nil {
 		return fmt.Errorf("failed to marshal message: %w", err)
@@ -158,7 +162,7 @@ func (s *Service) Broadcast(msg Message) error {
 
 // handleStream handles an incoming stream
 func (s *Service) handleStream(stream network.Stream) {
-	logrus.Trace("Handling stream")
+	logrus.Trace("Handling incoming stream")
 	defer stream.Close()
 	buf := make([]byte, 1024)
 	n, err := stream.Read(buf)
