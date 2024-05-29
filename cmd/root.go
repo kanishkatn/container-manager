@@ -46,7 +46,8 @@ func init() {
 	rootCmd.Flags().IntVar(&config.QueueSize, "queue-size", config.QueueSize, "the size of the job queue")
 	rootCmd.Flags().IntVar(&config.WorkerCount, "worker-count", config.WorkerCount, "the number of workers to run")
 	rootCmd.Flags().StringVar(&config.ListenAddress, "listen-address", config.ListenAddress, "the address to listen on")
-	rootCmd.Flags().StringVar(&config.Port, "port", config.Port, "the port to listen on")
+	rootCmd.Flags().IntVar(&config.JRPCPort, "jrpc-port", config.JRPCPort, "the jrpc-port to listen on")
+	rootCmd.Flags().IntVar(&config.P2PPort, "p2p-port", config.P2PPort, "the p2p-port to listen on")
 }
 
 // Execute runs the root command
@@ -68,7 +69,7 @@ func runNode() error {
 
 	// setup p2p service
 	logrus.Infof("Starting P2P service")
-	p2pService, err := services.NewP2PService(jobQueue)
+	p2pService, err := services.NewP2PService(jobQueue, config.P2PPort)
 	if err != nil {
 		return fmt.Errorf("failed to create P2P service: %w", err)
 	}
@@ -83,8 +84,8 @@ func runNode() error {
 	}
 	http.Handle("/jrpc", jrpcHandler)
 
-	logrus.Infof("JRPC server listening on port %s", config.Port)
-	address := fmt.Sprintf("%s:%s", config.ListenAddress, config.Port)
+	logrus.Infof("JRPC server listening on port %d", config.JRPCPort)
+	address := fmt.Sprintf("%s:%d", config.ListenAddress, config.JRPCPort)
 	if err := http.ListenAndServe(address, nil); err != nil {
 		return fmt.Errorf("failed to start jrpc server: %w", err)
 	}

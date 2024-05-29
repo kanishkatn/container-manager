@@ -76,7 +76,7 @@ type Service struct {
 }
 
 // NewP2PService creates a new P2P service
-func NewP2PService(jobQueue Queue) (*Service, error) {
+func NewP2PService(jobQueue Queue, port int) (*Service, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	containerIP, err := getHostIP()
@@ -85,18 +85,14 @@ func NewP2PService(jobQueue Queue) (*Service, error) {
 		return nil, fmt.Errorf("failed to get container IP: %w", err)
 	}
 
-	var listenAddrs []multiaddr.Multiaddr
-	for _, port := range []int{4001, 4002} { // Replace with the actual ports you want to use
-		addr, err := multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/%s/tcp/%d", containerIP, port))
-		if err != nil {
-			cancel()
-			return nil, fmt.Errorf("failed to create multiaddr: %w", err)
-		}
-		listenAddrs = append(listenAddrs, addr)
+	listenAddr, err := multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/%s/tcp/%d", containerIP, port))
+	if err != nil {
+		cancel()
+		return nil, fmt.Errorf("failed to create multiaddr: %w", err)
 	}
 
 	p2pHost, err := libp2p.New(
-		libp2p.ListenAddrs(listenAddrs...),
+		libp2p.ListenAddrs(listenAddr),
 	)
 	if err != nil {
 		cancel()

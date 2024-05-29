@@ -10,8 +10,10 @@ type Config struct {
 	WorkerCount int
 	// The address to listen on
 	ListenAddress string
-	// The port to listen on
-	Port string
+	// The JRPCPort to listen on
+	JRPCPort int
+	// The P2PPort to listen on
+	P2PPort int
 	// The log level
 	LogLevel string
 }
@@ -27,8 +29,11 @@ func (c *Config) ValidateBasic() error {
 	if c.ListenAddress == "" {
 		return fmt.Errorf("listen address is required")
 	}
-	if c.Port == "" {
-		return fmt.Errorf("port is required")
+	if c.JRPCPort <= 0 {
+		return fmt.Errorf("jrpc-port is required")
+	}
+	if c.P2PPort <= 0 {
+		return fmt.Errorf("p2p-port is required")
 	}
 	if c.LogLevel == "" {
 		return fmt.Errorf("log level is required")
@@ -42,7 +47,8 @@ func DefaultConfig() *Config {
 		QueueSize:     100,
 		WorkerCount:   10,
 		ListenAddress: "0.0.0.0",
-		Port:          "8080",
+		JRPCPort:      8080,
+		P2PPort:       4001,
 		LogLevel:      "info",
 	}
 }
