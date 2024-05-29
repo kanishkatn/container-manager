@@ -51,7 +51,11 @@ func (m *MockDockerService) DeployContainer(container types.Container) (string, 
 // DeployContainer indicates an expected call of DeployContainer.
 func (mr *MockDockerServiceMockRecorder) DeployContainer(container any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeployContainer", reflect.TypeOf((*MockDockerService)(nil).DeployContainer), container)
+	return mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"DeployContainer",
+		reflect.TypeOf((*MockDockerService)(nil).DeployContainer),
+		container)
 }
 
 // GetContainerStatus mocks base method.
@@ -66,5 +70,8 @@ func (m *MockDockerService) GetContainerStatus(containerID string) (string, erro
 // GetContainerStatus indicates an expected call of GetContainerStatus.
 func (mr *MockDockerServiceMockRecorder) GetContainerStatus(containerID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetContainerStatus", reflect.TypeOf((*MockDockerService)(nil).GetContainerStatus), containerID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock,
+		"GetContainerStatus",
+		reflect.TypeOf((*MockDockerService)(nil).GetContainerStatus),
+		containerID)
 }

@@ -60,7 +60,6 @@ func (cs *ContainerService) Create(r *http.Request, req *ContainerCreateRequest,
 	logrus.WithFields(logrus.Fields{
 		"image":     req.Image,
 		"arguments": req.Arguments,
-		"resources": req.Resources,
 		"env":       req.Env,
 	}).Debugf("queueing and broadcasting job")
 	if err := req.Container.Validate(); err != nil {

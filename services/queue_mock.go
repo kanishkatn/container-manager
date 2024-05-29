@@ -50,7 +50,11 @@ func (m *MockQueue) Enqueue(jobID string, container types.Container) error {
 // Enqueue indicates an expected call of Enqueue.
 func (mr *MockQueueMockRecorder) Enqueue(jobID, container any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Enqueue", reflect.TypeOf((*MockQueue)(nil).Enqueue), jobID, container)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock,
+		"Enqueue",
+		reflect.TypeOf((*MockQueue)(nil).Enqueue),
+		jobID,
+		container)
 }
 
 // GetStatus mocks base method.
@@ -65,7 +69,10 @@ func (m *MockQueue) GetStatus(jobID string) (types.JobStatus, bool) {
 // GetStatus indicates an expected call of GetStatus.
 func (mr *MockQueueMockRecorder) GetStatus(jobID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStatus", reflect.TypeOf((*MockQueue)(nil).GetStatus), jobID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock,
+		"GetStatus",
+		reflect.TypeOf((*MockQueue)(nil).GetStatus),
+		jobID)
 }
 
 // Run mocks base method.
@@ -77,7 +84,10 @@ func (m *MockQueue) Run(workerCount int) {
 // Run indicates an expected call of Run.
 func (mr *MockQueueMockRecorder) Run(workerCount any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Run", reflect.TypeOf((*MockQueue)(nil).Run), workerCount)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock,
+		"Run",
+		reflect.TypeOf((*MockQueue)(nil).Run),
+		workerCount)
 }
 
 // Stop mocks base method.

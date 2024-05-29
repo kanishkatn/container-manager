@@ -23,7 +23,6 @@ curl -X POST localhost:8080/jrpc \
     "params": [{
         "image": "nginx",
         "arguments": [],
-        "resources": {},
         "env": {}
     }],
     "id": 1
@@ -88,7 +87,8 @@ type Queue interface {
 
 ### Peer-to-Peer Service
 
-The Container Manager includes a peer-to-peer service for broadcasting jobs to a peer-to-peer network. The peer-to-peer service includes the following methods:
+The Container Manager includes a peer-to-peer service for broadcasting jobs to a peer-to-peer network. It uses mdns for peer discovery.
+The peer-to-peer service includes the following methods:
 
 ```go
 type P2PService interface {
@@ -120,7 +120,7 @@ type DockerService interface {
 
 ### CLI
 
-The Container Manager includes a CLI for interacting with the Container Manager. The CLI is built using Cobra and includes only the root command.
+The Container Manager includes a CLI for interacting with the application. The CLI is built using Cobra and includes only the root command.
 
 ```bash
 Usage:
@@ -175,7 +175,6 @@ curl -X POST localhost:8080/jrpc \
     "params": [{
         "image": "nginx",
         "arguments": [],
-        "resources": {},
         "env": {}
     }],
     "id": 1
@@ -213,3 +212,12 @@ curl -X POST localhost:8081/jrpc \
 - Better logging in the packages.
 - Retry mechanism for the job queue.
 - Viper support for configuration management.
+- The p2p service uses mdns for peer discovery. It needs to be replaced with a more robust solution for production.
+
+## Local versions
+
+- Go: 1.21.3
+- Arch: darwin/arm64
+- OS: macOS
+- Docker: 26.1.1
+- Docker Compose: v2.27.0-desktop.2

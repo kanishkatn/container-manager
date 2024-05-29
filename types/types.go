@@ -10,7 +10,6 @@ import "fmt"
 type Container struct {
 	Image     string            `json:"image"`
 	Arguments []string          `json:"arguments"`
-	Resources map[string]string `json:"resources"`
 	Env       map[string]string `json:"env"`
 }
 

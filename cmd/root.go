@@ -43,9 +43,24 @@ var rootCmd = &cobra.Command{
 // init initializes the flags for the root command
 func init() {
 	rootCmd.Flags().StringVar(&config.LogLevel, "log-level", config.LogLevel, "log level")
-	rootCmd.Flags().IntVar(&config.QueueSize, "queue-size", config.QueueSize, "the size of the job queue")
-	rootCmd.Flags().IntVar(&config.WorkerCount, "worker-count", config.WorkerCount, "the number of workers to run")
-	rootCmd.Flags().StringVar(&config.ListenAddress, "listen-address", config.ListenAddress, "the address to listen on")
+	rootCmd.Flags().IntVar(
+		&config.QueueSize,
+		"queue-size",
+		config.QueueSize,
+		"the size of the job queue",
+	)
+	rootCmd.Flags().IntVar(
+		&config.WorkerCount,
+		"worker-count",
+		config.WorkerCount,
+		"the number of workers to run",
+	)
+	rootCmd.Flags().StringVar(
+		&config.ListenAddress,
+		"listen-address",
+		config.ListenAddress,
+		"the address to listen on",
+	)
 	rootCmd.Flags().IntVar(&config.JRPCPort, "jrpc-port", config.JRPCPort, "the jrpc-port to listen on")
 	rootCmd.Flags().IntVar(&config.P2PPort, "p2p-port", config.P2PPort, "the p2p-port to listen on")
 }
