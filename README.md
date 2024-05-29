@@ -205,6 +205,8 @@ curl -X POST localhost:8081/jrpc \
 }'
 ```
 
+Please find the `e2e_test.sh` which handles the above steps.
+
 ## Further Improvements
 
 - Add integration tests for the JRPC API.

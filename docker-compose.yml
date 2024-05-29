@@ -1,7 +1,6 @@
-version: '3.8'
-
 services:
   manager1:
+    container_name: manager1
     build: .
     ports:
       - "8080:8080"
@@ -12,6 +11,7 @@ services:
       - container_network
     command: [ "./container-manager", "--jrpc-port=8080", "--p2p-port=4041" ]
   manager2:
+    container_name: manager2
     build: .
     ports:
       - "8081:8081"
