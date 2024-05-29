@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestJobQueueImpl(t *testing.T) {
+	t.Parallel()
 	queueSize := 10
 	workerCount := 3
 	jobCount := 5
@@ -48,12 +48,13 @@ func TestJobQueueImpl(t *testing.T) {
 	for i := 0; i < jobCount; i++ {
 		jobID := fmt.Sprintf("job-%d", i)
 		status, exists := jobQueue.GetStatus(jobID)
-		assert.True(t, exists)
-		assert.Equal(t, types.JobStatusComplete, status)
+		require.True(t, exists)
+		require.Equal(t, types.JobStatusComplete, status)
 	}
 }
 
 func TestJobQueueImplConcurrentEnqueue(t *testing.T) {
+	t.Parallel()
 	queueSize := 100
 	workerCount := 5
 	jobCount := 50
@@ -97,7 +98,7 @@ func TestJobQueueImplConcurrentEnqueue(t *testing.T) {
 	for i := 0; i < jobCount; i++ {
 		jobID := fmt.Sprintf("job-%d", i)
 		status, exists := jobQueue.GetStatus(jobID)
-		assert.True(t, exists)
-		assert.Equal(t, types.JobStatusComplete, status)
+		require.True(t, exists)
+		require.Equal(t, types.JobStatusComplete, status)
 	}
 }

@@ -72,6 +72,9 @@ func Execute() {
 	}
 }
 
+// serviceName is the service name for mDNS discovery
+const serviceName = "container-manager"
+
 // runNode runs the container manager node
 func runNode() error {
 	ds, err := services.NewDockerService()
@@ -88,7 +91,7 @@ func runNode() error {
 	if err != nil {
 		return fmt.Errorf("failed to create P2P service: %w", err)
 	}
-	p2pService.Start()
+	p2pService.Start(serviceName)
 
 	// setup jrpc handler
 	jrpcHandler := rpc.NewServer()

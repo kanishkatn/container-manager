@@ -10,6 +10,7 @@ import (
 )
 
 func TestNewP2PService(t *testing.T) {
+	t.Parallel()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -22,22 +23,23 @@ func TestNewP2PService(t *testing.T) {
 }
 
 func TestP2PServiceStartAndStop(t *testing.T) {
+	t.Parallel()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	jobQueue1 := NewMockQueue(ctrl)
 	jobQueue2 := NewMockQueue(ctrl)
 
-	service1, err := NewP2PService(jobQueue1, 4041)
+	service1, err := NewP2PService(jobQueue1, 4042)
 	require.NoError(t, err)
 	require.NotNil(t, service1)
 
-	service2, err := NewP2PService(jobQueue2, 4042)
+	service2, err := NewP2PService(jobQueue2, 4043)
 	require.NoError(t, err)
 	require.NotNil(t, service2)
 
-	go service1.Start()
-	go service2.Start()
+	go service1.Start(t.Name())
+	go service2.Start(t.Name())
 
 	time.Sleep(2 * time.Second)
 	require.Equal(t, 2, service1.host.Peerstore().Peers().Len())
@@ -47,22 +49,23 @@ func TestP2PServiceStartAndStop(t *testing.T) {
 }
 
 func TestP2PServiceBroadcast(t *testing.T) {
+	t.Parallel()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	jobQueue1 := NewMockQueue(ctrl)
 	jobQueue2 := NewMockQueue(ctrl)
 
-	service1, err := NewP2PService(jobQueue1, 4041)
+	service1, err := NewP2PService(jobQueue1, 4044)
 	require.NoError(t, err)
 	require.NotNil(t, service1)
 
-	service2, err := NewP2PService(jobQueue2, 4042)
+	service2, err := NewP2PService(jobQueue2, 4045)
 	require.NoError(t, err)
 	require.NotNil(t, service2)
 
-	go service1.Start()
-	go service2.Start()
+	go service1.Start(t.Name())
+	go service2.Start(t.Name())
 
 	time.Sleep(2 * time.Second)
 	require.Equal(t, 2, service1.host.Peerstore().Peers().Len())
@@ -91,6 +94,7 @@ func TestP2PServiceBroadcast(t *testing.T) {
 }
 
 func TestGetHostIP(t *testing.T) {
+	t.Parallel()
 	ip, err := getHostIP()
 	require.NoError(t, err)
 	require.NotEmpty(t, ip)

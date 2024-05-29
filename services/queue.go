@@ -119,6 +119,9 @@ func (q *QueueHandler) Stop() {
 // executeJob executes a job.
 func (q *QueueHandler) executeJob(job job) {
 	// TODO: retry mechanism
+	// If a container is deployed and the status is not running, we need to remove the container and retry
+	// If the container is deployed, and the health check times out, we need to stop, remove the container and retry
+	// We also need to keep track of the number of retries and stop after a certain number of retries
 	containerID, err := q.dockerService.DeployContainer(job.container)
 	if err != nil {
 		logrus.WithField("job_id", job.id).Errorf("failed to deploy container: %v", err)

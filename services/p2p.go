@@ -22,8 +22,6 @@ import (
 const (
 	// ProtocolID is the protocol ID for the container manager p2p service
 	ProtocolID = "/container-manager/1.0.0"
-	// ServiceName is the service name for mDNS discovery
-	ServiceName = "container-manager"
 )
 
 // Message is a P2P message sent between peers
@@ -59,7 +57,7 @@ func newPeerNotifee(handler *Service) *peerNotifee {
 // ID returns the ID of the p2p host
 type P2PService interface {
 	ID() string
-	Start()
+	Start(serviceName string)
 	Broadcast(msg Message) error
 	Stop()
 }
@@ -116,11 +114,11 @@ func (s *Service) ID() string {
 }
 
 // Start starts the P2P service
-func (s *Service) Start() {
+func (s *Service) Start(serviceName string) {
 	logrus.Trace("Starting P2P Service")
 	// Set up mDNS for peer discovery
 	notifee := newPeerNotifee(s)
-	service := mdns.NewMdnsService(s.host, ServiceName, notifee)
+	service := mdns.NewMdnsService(s.host, serviceName, notifee)
 	if err := service.Start(); err != nil {
 		logrus.Fatalf("failed to start mDNS service: %v", err)
 	}

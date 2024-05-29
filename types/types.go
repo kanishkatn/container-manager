@@ -5,7 +5,6 @@ import "fmt"
 // Container is the object that represents a container to be run.
 // image: The container image to run
 // arguments: The arguments to pass to the container
-// resources: The resources to allocate for the job
 // env: The environment variables to set for the job
 type Container struct {
 	Image     string            `json:"image"`
